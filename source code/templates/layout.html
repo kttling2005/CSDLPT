@@ -416,6 +416,9 @@ select.form-control { cursor: pointer; }
         <a href="/admin/revenue_stats" class="nav-item {% if 'admin/revenue_stats' in request.path %}active{% endif %}">
           <i class="fas fa-chart-line"></i> Thống kê
         </a>
+        <a href="/admin/concurrent_test" class="nav-item {% if '/admin/concurrent_test' in request.path %}active{% endif %}" style="color: var(--accent2);">
+          <i class="fas fa-bolt"></i> Test Đồng Thời (Beta)
+        </a>
     {% elif session['user']['role'] == 'NhanVien' %}
           <div class="nav-section-label">Tổng quan</div>
             <a href="/staff/dashboard" class="nav-item {% if request.path == '/staff/dashboard' %}active{% endif %}">
