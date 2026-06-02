@@ -1,7 +1,9 @@
-from flask import Flask, render_template, jsonify, request, redirect, url_for, session, flash
+from flask import Blueprint, Flask, render_template, jsonify, request, redirect, url_for, session, flash
 from db.connect_center import get_center_connection
 from db.connect_branch import get_branch_connection   # <-- helper mới (xem bên dưới)
 from functools import wraps
+import threading
+import time
 
 from services.inventory_service import (
     get_all_inventory,
@@ -13,7 +15,8 @@ from services.query_service import (
     q1_warehouses_with_stock,
     q5_orders_from_multiple_warehouses,
     q6_all_orders,
-    q4_top_selling_products
+    q4_top_selling_products,
+    q2_total_stock
 )
 
 from services.order_service import (
@@ -500,6 +503,115 @@ def revenue_stats():
 def warehouses():
     data = get_all_warehouses()
     return render_template('admin/warehouses.html', warehouses=data)
+
+# =========================
+# TRANG TEST ĐỒNG THỜI
+# =========================
+# Định nghĩa Blueprint
+admin_bp = Blueprint('admin', __name__)
+
+@admin_bp.route('/admin/concurrent_test')
+@role_required(['Admin'])
+def concurrent_test_page():
+    """Trang giao diện kiểm thử đặt hàng đồng thời nhiều khách hàng."""
+    try:
+        conn   = get_center_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(
+            "SELECT MaND, HoTen, KhuVuc FROM NguoiDung "
+            "WHERE VaiTro = 'KhachHang' ORDER BY MaND"
+        )
+        customers = cursor.fetchall()
+        cursor.execute("SELECT MaSP, TenSP, Gia FROM SanPham ORDER BY MaSP")
+        products = cursor.fetchall()
+        cursor.close()
+        conn.close()
+        return render_template('admin/concurrent_test.html',
+                               customers=customers, products=products)
+    except Exception as e:
+        return _err(e)
+
+
+@admin_bp.route('/api/admin/concurrent_test', methods=['POST'])
+@role_required(['Admin'])
+def api_concurrent_test():
+    """
+    Chạy N khách hàng đặt hàng đúng cùng lúc bằng threading.Barrier trên giao diện Web.
+    """
+    data = request.json or {}
+    orders = data.get("orders", [])
+
+    if len(orders) < 2:
+        return jsonify({"success": False,
+                        "message": "Cần ít nhất 2 khách hàng để test đồng thời!"}), 400
+
+    ma_sp_check = orders[0].get("ma_sp", "SP01").strip().upper()
+    _, stock_before = q2_total_stock(ma_sp_check)
+
+    results = [None] * len(orders)
+    barrier = threading.Barrier(len(orders))
+    log_lock = threading.Lock()
+    logs = []
+
+    def worker(idx, ma_kh, items):
+        current_time = time.strftime("%H:%M:%S", time.localtime())
+        with log_lock:
+            logs.append({
+                "idx": idx, "ma_kh": ma_kh, "time": current_time,
+                "event": "waiting", "msg": "Sẵn sàng, đang chờ tại Barrier..."
+            })
+
+        # Đồng loạt phóng kích nổ tải
+        barrier.wait()
+
+        current_time = time.strftime("%H:%M:%S", time.localtime())
+        with log_lock:
+            logs.append({
+                "idx": idx, "ma_kh": ma_kh, "time": current_time,
+                "event": "started", "msg": "Bắt đầu gọi thủ tục đặt hàng!"
+            })
+
+        ma_dh = place_order(ma_kh, items)
+        results[idx] = {"ma_kh": ma_kh, "ma_dh": ma_dh, "success": ma_dh is not None}
+
+        current_time = time.strftime("%H:%M:%S", time.localtime())
+        with log_lock:
+            status = f"✅ Thành công: {ma_dh}" if ma_dh else "❌ Thất bại (Hết hàng / Xung đột Lock)"
+            logs.append({
+                "idx": idx, "ma_kh": ma_kh, "time": current_time,
+                "event": "done", "msg": status
+            })
+
+    threads = []
+    for i, o in enumerate(orders):
+        items = [{"MaSP": o["ma_sp"], "SoLuong": int(o["so_luong"])}]
+        t = threading.Thread(target=worker, args=(i, o["ma_kh"], items))
+        threads.append(t)
+
+    for t in threads: t.start()
+    for t in threads: t.join()
+
+    _, stock_after = q2_total_stock(ma_sp_check)
+    thanh_cong = [r for r in results if r and r["success"]]
+    that_bai = [r for r in results if r and not r["success"]]
+
+    tong_da_mua = sum(
+        int(orders[i]["so_luong"])
+        for i, r in enumerate(results) if r and r["success"]
+    )
+
+    return jsonify({
+        "success": True,
+        "stock_before": stock_before,
+        "stock_after": stock_after,
+        "giam": stock_before - stock_after,
+        "giam_dung": (stock_after == stock_before - tong_da_mua),
+        "khong_am": stock_after >= 0,
+        "thanh_cong": thanh_cong,
+        "that_bai": that_bai,
+        "results": results,
+        "logs": sorted(logs, key=lambda x: (x["time"], x["idx"])),
+    })
 
 # =========================
 # TRANG KHÁCH HÀNG
@@ -1310,6 +1422,6 @@ def _err(e):
     </div>
     """
 
-
+app.register_blueprint(admin_bp)
 if __name__ == '__main__':
     app.run(debug=True)
