@@ -121,21 +121,19 @@ def allocate_product(ma_sp, so_luong_can, priority_sites):
 # ==============================
 # TRỪ TỒN KHO (có transaction + lock)
 # ==============================
-
 def hold_inventory(site_key, ma_kho, ma_sp, so_luong):
     """
     Trừ tồn kho tại site với row-level lock (SELECT FOR UPDATE).
-    Dùng transaction để tránh race condition / âm kho.
-    Trả về True nếu thành công, False nếu thất bại.
+    Đảm bảo an toàn tuyệt đối trước Race Condition.
     """
     config = SITE_CONFIG[site_key]
-    conn   = config["connect"]()
-    conn.autocommit = False
+    conn = config["connect"]()
+    conn.autocommit = False  # Bắt đầu một Transaction thực sự
     cursor = conn.cursor(dictionary=True)
-    table  = config["table"]
+    table = config["table"]
 
     try:
-        # Khóa dòng tồn kho trước khi đọc + ghi (tránh âm kho đồng thời)
+        # 1. Thực hiện SELECT FOR UPDATE để ép các Thread phải xếp hàng chờ nhau
         cursor.execute(
             f"SELECT SoLuong FROM {table} "
             f"WHERE MaKho = %s AND MaSP = %s FOR UPDATE",
@@ -143,31 +141,41 @@ def hold_inventory(site_key, ma_kho, ma_sp, so_luong):
         )
         row = cursor.fetchone()
 
-        if not row or row["SoLuong"] < so_luong:
+        if not row:
+            print(f"    [LOCK FAIL] Không tìm thấy sản phẩm {ma_sp} trong kho {ma_kho}")
             conn.rollback()
-            print(f"    [LOCK FAIL] {site_key}/kho{ma_kho}/SP{ma_sp}: "
-                  f"hàng thực tế không đủ khi lock (còn {row})")
             return False
 
+        current_stock = row["SoLuong"]
+        print(f"    [THREAD LOCK] Đọc kho thực tế tại thời điểm LOCK: {current_stock}")
+
+        # 2. Kiểm tra thủ công ngay sau khi đã chiếm giữ Lock thành công
+        if current_stock < so_luong:
+            print(f"    [LOCK FAIL] Kho thực tế không đủ (Còn {current_stock}, cần {so_luong})")
+            conn.rollback()
+            return False
+
+        # 3. Thực hiện trừ kho
         cursor.execute(
             f"UPDATE {table} SET SoLuong = SoLuong - %s "
             f"WHERE MaKho = %s AND MaSP = %s",
             (so_luong, ma_kho, ma_sp)
         )
+
+        # Chốt Transaction để lưu dữ liệu xuống DB Site
         conn.commit()
-        print(f"    [LOCK OK] Đã trừ {so_luong} x {ma_sp} "
-              f"tại {site_key}/{ma_kho}")
+        print(f"    [LOCK OK] Đã trừ thành công {so_luong} x {ma_sp} tại {site_key}/{ma_kho}")
         return True
 
     except Exception as e:
+        # Nếu dính lỗi CHECK CONSTRAINT của MySQL, code sẽ nhảy vào đây
         conn.rollback()
-        print(f"    [ERROR] hold_inventory {site_key}: {e}")
+        print(f"    [DATABASE ERROR IN LOCK] Luồng bị từ chối do xung đột kho: {e}")
         return False
 
     finally:
         cursor.close()
         conn.close()
-
 
 # ==============================
 # GIẢI PHÓNG HÀNG TẠM GIỮ (RELEASE HOLD)
