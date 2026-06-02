@@ -1,0 +1,177 @@
+{% extends "layout.html" %}
+
+{% block page_title %}Concurrent Order Testing{% endblock %}
+{% block page_sub %}Mô phỏng Race Condition kiểm tra tính toàn vẹn dữ liệu phân tán (Tải đồng thời){% endblock %}
+
+{% block content %}
+<div class="grid-2">
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-sliders-h text-primary"></i> Thiết Lập Cấu Hình Luồng Đa Nhiệm</div>
+    </div>
+    <div class="card-body">
+      <div class="form-group">
+        <label class="form-label">Chọn sản phẩm thử nghiệm (MaSP):</label>
+        <select class="form-control" id="selected_product">
+          {% for p in products %}
+            <option value="{{ p.MaSP }}">{{ p.MaSP }} - {{ p.TenSP }} (Giá: {{ "{:,.0f}".format(p.Gia) }}đ)</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">Số lượng đặt mua trên mỗi khách hàng:</label>
+        <input type="number" class="form-control" id="purchase_qty" value="2" min="1">
+      </div>
+
+      <div class="alert alert-info">
+        <i class="fas fa-info-circle"></i> Hệ thống sẽ tự động giả lập <strong>5 tài khoản khách hàng</strong> (ND003 → ND007) đồng loạt gửi đơn hàng vào hệ thống tại cùng một mili-giây bằng cơ chế <strong>Barrier Lock</strong> ngầm.
+      </div>
+
+      <button id="btn-trigger" onclick="triggerConcurrentTest()" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; margin-top: 8px;">
+        <i class="fas fa-bolt"></i> KÍCH HOẠT ĐỒNG THỜI NGAY
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><i class="fas fa-square-poll-vertical text-success"></i> Đối Soát Kho Thực Tế Toàn Hệ Thống</div>
+    </div>
+    <div class="card-body">
+      <div class="stats-grid" style="grid-template-columns: 1fr 1fr; margin-bottom: 20px;">
+        <div class="stat-card purple" style="padding: 16px;">
+          <div class="stat-label">Tổng Tồn Kho Trước Test</div>
+          <div class="stat-value" id="lbl-before">-</div>
+        </div>
+        <div class="stat-card pink" style="padding: 16px;">
+          <div class="stat-label">Tổng Tồn Kho Sau Test</div>
+          <div class="stat-value" id="lbl-after">-</div>
+        </div>
+      </div>
+
+      <div class="mb-16">
+        <label class="form-label">Trạng thái xác minh dữ liệu:</label>
+        <div id="status-checks" style="display: flex; gap: 12px; margin-top: 8px;">
+          <span class="badge purple" id="badge-negative" style="background: #EDE9FE; color: #5B21B6;">Kho không bị âm: Chưa test</span>
+          <span class="badge purple" id="badge-match" style="background: #EDE9FE; color: #5B21B6;">Khớp số lượng bán: Chưa test</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top: 24px;">
+  <div class="card-header">
+    <div class="card-title"><i class="fas fa-terminal text-warning"></i> Nhật Ký Trực Quan Hành Trình Xử Lý Của Các Luồng</div>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Thời gian</th>
+          <th>Thứ tự luồng</th>
+          <th>Mã Khách Hàng</th>
+          <th>Sự kiện tuyến trình</th>
+          <th>Phản hồi kết quả từ database</th>
+        </tr>
+      </thead>
+      <tbody id="log-table-body">
+        <tr>
+          <td colspan="5" class="empty-state">
+            <i class="fas fa-bolt-lightning"></i>
+            <p>Chưa có dữ liệu kiểm thử. Vui lòng thiết lập cấu hình và bấm kích hoạt ép tải.</p>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function triggerConcurrentTest() {
+  const btn = document.getElementById('btn-trigger');
+  const prodSelect = document.getElementById('selected_product').value;
+  const qty = document.getElementById('purchase_qty').value;
+
+  // Khóa nút bấm chống double-click phá luồng
+  btn.disabled = true;
+  btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> ĐANG ÉP TẢI XUNG ĐỘT...`;
+
+  // Thiết lập mảng payload truyền tải khớp 100% bộ lọc của Python API
+  const mockCustomers = ["ND003", "ND004", "ND005", "ND006", "ND007"];
+  const ordersPayload = mockCustomers.map(kh => ({
+      ma_kh: kh,
+      ma_sp: prodSelect,
+      so_luong: parseInt(qty)
+  }));
+
+  // Gọi chính xác API đường dẫn gạch dưới trùng khớp với app.py của bạn
+  fetch('/api/admin/concurrent_test', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ orders: ordersPayload })
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fas fa-bolt"></i> KÍCH HOẠT ĐỒNG THỜI NGAY`;
+
+    if(!data.success) {
+      showToast(data.message || "Xảy ra lỗi trong quá trình kích nổ luồng!", "error");
+      return;
+    }
+
+    // Tận dụng hàm showToast() có sẵn của file layout.html cha
+    showToast("Mô phỏng Race Condition hoàn tất!", "success");
+
+    // Đổ số liệu kho lên giao diện đối soát
+    document.getElementById('lbl-before').innerText = fmtNum(data.stock_before);
+    document.getElementById('lbl-after').innerText = fmtNum(data.stock_after);
+
+    // Kiểm tra tính toàn vẹn dữ liệu: Kho không bị âm
+    const bNegative = document.getElementById('badge-negative');
+    if(data.khong_am) {
+      bNegative.className = "badge success"; bNegative.innerHTML = `<i class="fas fa-check-circle"></i> Kho không bị âm`;
+    } else {
+      bNegative.className = "badge danger"; bNegative.innerHTML = `<i class="fas fa-times-circle"></i> LỖI: Kho bị âm!`;
+    }
+
+    // Kiểm tra tính toàn vẹn dữ liệu: Số lượng trừ kho phải trùng khớp tuyệt đối đơn chốt thành công
+    const bMatch = document.getElementById('badge-match');
+    if(data.giam_dung) {
+      bMatch.className = "badge success"; bMatch.innerHTML = `<i class="fas fa-check-circle"></i> Khớp số lượng bán`;
+    } else {
+      bMatch.className = "badge danger"; bMatch.innerHTML = `<i class="fas fa-times-circle"></i> LỖI: Số liệu kho bị lệch!`;
+    }
+
+    // Làm sạch và đổ dữ liệu logs dòng chảy luồng vào bảng dữ liệu
+    const tbody = document.getElementById('log-table-body');
+    tbody.innerHTML = '';
+
+    data.logs.forEach(log => {
+      let badgeStyle = "info";
+      if(log.msg.includes("✅")) badgeStyle = "success";
+      if(log.msg.includes("❌")) badgeStyle = "danger";
+
+      tbody.innerHTML += `
+        <tr>
+          <td><code style="color: var(--accent2); font-weight: bold;">${log.time}</code></td>
+          <td><span class="badge purple">Thread-${String(log.idx).padStart(2, '0')}</span></td>
+          <td><strong>${log.ma_kh}</strong></td>
+          <td><span class="text-primary fw-bold" style="font-size:12px;">${log.event.toUpperCase()}</span></td>
+          <td><span class="badge ${badgeStyle}">${log.msg}</span></td>
+        </tr>
+      `;
+    });
+  })
+  .catch(err => {
+    btn.disabled = false;
+    btn.innerHTML = `<i class="fas fa-bolt"></i> KÍCH HOẠT ĐỒNG THỜI NGAY`;
+    showToast("Không thể kết nối đến máy chủ hoặc sập tiến trình luồng!", "error");
+  });
+}
+</script>
+{% endblock %}
