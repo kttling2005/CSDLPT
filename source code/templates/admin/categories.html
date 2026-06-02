@@ -1,0 +1,163 @@
+{% extends 'layout.html' %}
+
+{% block page_title %}
+<span style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 800 !important; letter-spacing: -0.5px; color: var(--text);">
+    Quản lý Danh mục
+</span>
+{% endblock %}
+
+{% block page_sub %}Phân loại cấu trúc ngành hàng thiết bị công nghệ toàn hệ thống{% endblock %}
+
+{% block content %}
+<div class="alert alert-info" style="margin-bottom: 24px;">
+    <i class="fas fa-lightbulb"></i>
+    <span><strong>Gợi ý cơ cấu phân loại:</strong> Hệ thống chuỗi kho TechMart nên duy trì tối giản các cụm danh mục cha như <i>Điện thoại & Máy tính bảng, Laptop & Máy tính, Điện tử Gia dụng...</i> để tối ưu tốc độ phân mảnh/truy vấn dữ liệu phân tán.</span>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fas fa-boxes-packing text-primary" style="margin-right: 6px;"></i> 
+      Phân loại nhóm ngành hàng hiện tại
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="toggleCatModal(true)">
+        <i class="fas fa-plus"></i> Tạo danh mục mới
+    </button>
+  </div>
+  
+  <div class="card-body">
+    {% if categories %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 150px;">Mã danh mục</th>
+            <th>Tên nhóm danh mục</th>
+            <th>Mô tả chi tiết</th>
+            <th style="text-align: center; width: 180px;">Số lượng mặt hàng</th>
+            <th style="text-align: right; width: 120px;">Tác vụ</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cat in categories %}
+          <tr id="cat-row-{{ cat.MaDanhMuc }}">
+            <td class="fw-bold" style="color: var(--primary);">{{ cat.MaDanhMuc }}</td>
+            <td class="fw-bold text-primary" style="font-size: 14px;">{{ cat.TenDanhMuc }}</td>
+            <td class="text-muted" style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                {{ cat.MoTa if cat.MoTa else 'Không có mô tả chi tiết' }}
+            </td>
+            <td style="text-align: center;">
+                <span class="badge purple" style="font-size: 12px; padding: 4px 12px;">
+                    {{ cat.SoLuongSanPham }} thiết bị
+                </span>
+            </td>
+            <td style="text-align: right;">
+                <button class="btn btn-outline btn-sm" style="color: var(--danger); border-color: var(--danger);" onclick="deleteCategory('{{ cat.MaDanhMuc }}', '{{ cat.TenDanhMuc }}')">
+                    <i class="fas fa-trash-can"></i> Xóa
+                </button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-folder-open"></i>
+        <p>Hệ thống trống rỗng, chưa cấu hình bất kỳ danh mục thiết bị nào.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="modal-overlay" id="categoryModal">
+    <div class="modal">
+        <div class="modal-title" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 800 !important; letter-spacing: -0.5px;"><i class="fas fa-tag text-primary"></i> Khởi tạo cấu trúc phân loại</div>
+
+        <div class="form-group">
+            <label class="form-label">Mã danh mục (Viết liền, không dấu)</label>
+            <input type="text" id="catId" class="form-control" placeholder="Ví dụ: DTHOAI, LAPTOP, GIADUNG...">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Tên nhóm danh mục ngành hàng</label>
+            <input type="text" id="catName" class="form-control" placeholder="Điện thoại & Máy tính bảng, Laptop...">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Mô tả ngắn gọn (Không bắt buộc)</label>
+            <textarea id="catDesc" class="form-control" rows="3" placeholder="Ghi chú phân loại sản phẩm thuộc nhóm này..." style="resize: none;"></textarea>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 28px; border-top: 1px solid var(--border); padding-top: 16px;">
+            <button class="btn btn-outline" onclick="toggleCatModal(false)">Bỏ qua</button>
+            <button class="btn btn-primary" onclick="submitAddCategory()">Xác nhận tạo</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleCatModal(show) {
+    const modal = document.getElementById('categoryModal');
+    if (show) {
+        modal.classList.add('active');
+    } else {
+        modal.classList.remove('active');
+        document.getElementById('catId').value = '';
+        document.getElementById('catName').value = '';
+        document.getElementById('catDesc').value = '';
+    }
+}
+
+function submitAddCategory() {
+    const madm = document.getElementById('catId').value.trim();
+    const tendm = document.getElementById('catName').value.trim();
+    const mota = document.getElementById('catDesc').value.trim();
+
+    // SỬA TẠI ĐÂY: Ràng buộc phải nhập cả mã danh mục dạng VARCHAR
+    if (!madm || !tendm) {
+        showToast('Vui lòng điền đầy đủ Mã và Tên danh mục sản phẩm!', 'warning');
+        return;
+    }
+
+    fetch('/api/admin/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ madm, tendm, mota }) // Đẩy cả mã danh mục lên API
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (res.success) {
+            showToast(res.message, 'success');
+            toggleCatModal(false);
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(res.message, 'error');
+        }
+    })
+    .catch(() => showToast('Mất kết nối máy chủ dữ liệu trung tâm!', 'error'));
+}
+
+function deleteCategory(catId, catName) {
+    if (!confirm(`Bạn chắc chắn muốn xóa sổ danh mục [ ${catName} ] ra khỏi hệ thống TechMart?`)) {
+        return;
+    }
+
+    fetch(`/api/admin/categories/${catId}`, { method: 'DELETE' })
+    .then(res => res.json())
+    .then(res => {
+        if (res.success) {
+            showToast(res.message, 'success');
+            // SỬA TẠI ĐÂY: Tìm chính xác ID chứa chuỗi VARCHAR để xóa hàng
+            const row = document.getElementById(`cat-row-${catId}`);
+            if (row) row.remove();
+        } else {
+            showToast(res.message, 'error');
+        }
+    })
+    .catch(() => showToast('Gặp lỗi sự cố bất định khi xóa danh mục!', 'error'));
+}
+</script>
+{% endblock %}

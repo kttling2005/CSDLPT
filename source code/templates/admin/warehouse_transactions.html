@@ -1,0 +1,166 @@
+{% extends 'layout.html' %}
+
+{% block page_title %}
+<span style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important; letter-spacing: -0.5px;">
+    Quản Lý Nhập Xuất Tổng (Admin)
+</span>
+{% endblock %}
+
+{% block page_sub %}Nhật ký giao dịch điều phối hàng hóa phân tán ngang thời gian thực{% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-exchange-alt"></i> Khởi tạo lệnh Nhập / Xuất kho</div>
+    </div>
+    <div class="card-body">
+        <form id="formTransaction" style="display: flex; flex-direction: column; gap: 16px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
+                <div>
+                    <label style="display:block; margin-bottom: 6px; font-weight:600; font-size:13px;">Mã Giao Dịch (MaNX) *</label>
+                    <input type="text" id="ma_nx" placeholder="Ví dụ: GD_HN_001" required style="width:100%; padding: 8px 12px; border: 1px solid #E2E8F0; border-radius: 6px;">
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom: 6px; font-weight:600; font-size:13px;">Loại Giao Dịch *</label>
+                    <select id="loai_gd" required style="width:100%; padding: 8px 12px; border: 1px solid #E2E8F0; border-radius: 6px; background:#fff;">
+                        <option value="NHAP">NHẬP HÀNG (+)</option>
+                        <option value="XUAT">XUẤT HÀNG (-)</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom: 6px; font-weight:600; font-size:13px;">Kho Tiếp Nhận *</label>
+                    <select id="select_kho" required style="width:100%; padding: 8px 12px; border: 1px solid #E2E8F0; border-radius: 6px; background:#fff;">
+                        <option value="" disabled selected>-- Chọn kho thực thi --</option>
+                        {% for wh in warehouses %}
+                        <option value="{{ wh.MaKho }}" data-khuvuc="{{ wh.KhuVuc }}">
+                            {{ wh.TenKho }} ({{ wh.KhuVuc }})
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom: 6px; font-weight:600; font-size:13px;">Mã Sản Phẩm *</label>
+                    <input type="text" id="ma_sp" placeholder="Ví dụ: SP01" required style="width:100%; padding: 8px 12px; border: 1px solid #E2E8F0; border-radius: 6px;">
+                </div>
+                <div>
+                    <label style="display:block; margin-bottom: 6px; font-weight:600; font-size:13px;">Số Lượng *</label>
+                    <input type="number" id="so_luong" min="1" value="1" required style="width:100%; padding: 8px 12px; border: 1px solid #E2E8F0; border-radius: 6px;">
+                </div>
+            </div>
+
+            <div>
+                <label style="display:block; margin-bottom: 6px; font-weight:600; font-size:13px;">Ghi chú giao dịch</label>
+                <input type="text" id="ghi_chu" placeholder="Lý do nhập xuất kho hàng..." style="width:100%; padding: 8px 12px; border: 1px solid #E2E8F0; border-radius: 6px;">
+            </div>
+
+            <div style="text-align: right;">
+                <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-weight: 600; background: #4F46E5; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    <i class="fas fa-database"></i> Thực Thi Trên Site Chi Nhánh
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-list-alt"></i> Lịch sử nhập xuất thu thập từ các Node phân mảnh</div>
+    </div>
+    <div class="card-body">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mã GD (MaNX)</th>
+                        <th>Loại GD</th>
+                        <th>Phân Mảnh Gốc</th>
+                        <th>Mã Kho</th>
+                        <th>Mã Sản Phẩm</th>
+                        <th>Số Lượng</th>
+                        <th>Thời Gian GD</th>
+                        <th>Ghi Chú</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if transactions %}
+                        {% for tx in transactions %}
+                        <tr>
+                            <td><span class="badge purple fw-bold">{{ tx.MaNX }}</span></td>
+                            <td>
+                                {% if tx.LoaiGD == 'NHAP' %}
+                                    <span class="badge success" style="color:#10B981; background:#E6F4EA; padding:4px 8px;"><i class="fas fa-arrow-down"></i> NHẬP KHO</span>
+                                {% else %}
+                                    <span class="badge danger" style="color:#EF4444; background:#FCE8E6; padding:4px 8px;"><i class="fas fa-arrow-up"></i> XUẤT KHO</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if tx.KhuVuc == 'Hà Nội' %}
+                                    <span class="warehouse-tag hn" style="padding: 4px 8px; font-size:12px;">Site Hà Nội</span>
+                                {% elif tx.KhuVuc == 'Đà Nẵng' %}
+                                    <span class="warehouse-tag dn" style="padding: 4px 8px; font-size:12px;">Site Đà Nẵng</span>
+                                {% else %}
+                                    <span class="warehouse-tag hcm" style="padding: 4px 8px; font-size:12px;">Site TPHCM</span>
+                                {% endif %}
+                            </td>
+                            <td class="fw-bold" style="color: #475569;">{{ tx.MaKho }}</td>
+                            <td><span class="badge info fw-bold">{{ tx.MaSP }}</span></td>
+                            <td><span class="fw-bold text-dark">{{ tx.SoLuong }} cái</span></td>
+                            <td style="font-size:13px; color:#64748B;">{{ tx.NgayGD }}</td>
+                            <td style="font-size:13px; color:#64748B;">{{ tx.GhiChu or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="8">
+                                <div class="empty-state">
+                                    <i class="fas fa-network-wired"></i>
+                                    <p>Hệ thống trống hoặc các node chi nhánh đang ngắt kết nối.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('formTransaction').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const selectKho = document.getElementById('select_kho');
+    const selectedOption = selectKho.options[selectKho.selectedIndex];
+    const khuVuc = selectedOption.getAttribute('data-khuvuc'); // Sẽ lấy ra 'Hà Nội', 'Đà Nẵng' hoặc 'TPHCM'
+
+    const payload = {
+        ma_nx: document.getElementById('ma_nx').value,
+        loai_gd: document.getElementById('loai_gd').value,
+        ma_kho: selectKho.value,
+        ma_sp: document.getElementById('ma_sp').value,
+        so_luong: document.getElementById('so_luong').value,
+        ghi_chu: document.getElementById('ghi_chu').value,
+        khu_vuc: khuVuc
+    };
+
+    fetch('/api/admin/warehouse_transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.reload();
+        } else {
+            alert("Lỗi: " + data.message);
+        }
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Lỗi kết nối đường truyền tới node!");
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,165 @@
+{% extends 'layout.html' %}
+
+{% block page_title %}
+<span style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 800 !important; letter-spacing: -0.5px; color: var(--text);">
+    Quản lý Thông tin Khách hàng
+</span>
+{% endblock %}
+
+{% block page_sub %}Nhân viên theo dõi hồ sơ, thêm nhanh thông tin khách hàng giao dịch tại chuỗi kho vận{% endblock %}
+
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fas fa-address-book text-primary" style="margin-right: 6px;"></i>
+      Danh sách khách hàng thành viên
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="toggleCustomerModal(true)">
+        <i class="fas fa-user-plus"></i> Đăng ký khách hàng mới
+    </button>
+  </div>
+
+  <div class="card-body">
+    {% if customers %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th style="width: 100px;">Mã Số</th>
+            <th>Họ và Tên</th>
+            <th>Địa chỉ Email</th>
+            <th style="width: 180px;">Khu vực / Chi nhánh</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for customer in customers %}
+          <tr>
+            <td class="fw-bold text-muted">#{{ customer.MaND }}</td>
+            <td class="fw-bold" style="color: var(--text);">{{ customer.HoTen }}</td>
+            <td>{{ customer.Email }}</td>
+            <td>
+                {% if customer.KhuVuc and ('HN' in customer.KhuVuc or 'Bắc' in customer.KhuVuc) %}
+                    <span class="site-pill hn"><div class="dot"></div> {{ customer.KhuVuc }}</span>
+                {% elif customer.KhuVuc and ('HCM' in customer.KhuVuc or 'Nam' in customer.KhuVuc) %}
+                    <span class="site-pill hcm"><div class="dot"></div> {{ customer.KhuVuc }}</span>
+                {% else %}
+                    <span class="site-pill dn"><div class="dot"></div> {{ customer.KhuVuc if customer.KhuVuc else 'Miền Trung' }}</span>
+                {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-users-slash"></i>
+        <p>Hệ thống phân tán chưa ghi nhận dữ liệu khách hàng nào.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="modal-overlay" id="customerModal">
+    <div class="modal" style="max-width: 460px;">
+        <div class="modal-title" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 800 !important; letter-spacing: -0.5px;">
+            <i class="fas fa-user-tag text-primary"></i> Đăng ký thông tin khách hàng
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Mã số khách hàng <span style="color: red;">*</span></label>
+            <input type="text" id="custID" class="form-control" placeholder="Ví dụ: KH001, CUST99..." style="text-transform: uppercase;">
+            <small style="color: var(--text2); font-size: 11px;">Tối đa 10 ký tự, không chứa dấu cách.</small>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Họ tên khách hàng <span style="color: red;">*</span></label>
+            <input type="text" id="custName" class="form-control" placeholder="Ví dụ: Nguyễn Văn A">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Địa chỉ Email liên hệ <span style="color: red;">*</span></label>
+            <input type="email" id="custEmail" class="form-control" placeholder="nguyenvana@gmail.com">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Vùng phân vùng (Khu vực lưu trú)</label>
+            <select id="custRegion" class="form-control" disabled style="background-color: var(--border); cursor: not-allowed;">
+                <option value="{{ session['user'].get('region') }}" selected>
+                    {{ session['user'].get('region') }} (Khu vực của Nhân viên quản lý)
+                </option>
+            </select>
+            <small style="color: var(--text2); font-size: 11px;">Hệ thống tự động áp dụng theo chi nhánh làm việc của nhân viên quản lý.</small>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Mật khẩu kích hoạt tài khoản (Mặc định)</label>
+            <input type="text" id="custPassword" class="form-control" value="123456" placeholder="Mật khẩu khởi tạo">
+            <small style="color: var(--text2); font-size: 11px;">Khách hàng có thể đổi lại mật khẩu này sau khi đăng nhập trực tuyến.</small>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px;">
+            <button class="btn btn-outline" onclick="toggleCustomerModal(false)">Đóng lại</button>
+            <button class="btn btn-primary" onclick="submitNewCustomer()">Lưu hồ sơ</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function toggleCustomerModal(show) {
+    const modal = document.getElementById('customerModal');
+    if (show) {
+        modal.classList.add('active');
+    } else {
+        modal.classList.remove('active');
+        document.getElementById('custID').value = ''; // Reset mã
+        document.getElementById('custName').value = '';
+        document.getElementById('custEmail').value = '';
+        document.getElementById('custRegion').value = '';
+        document.getElementById('custPassword').value = '123456';
+    }
+}
+
+function submitNewCustomer() {
+    const mand = document.getElementById('custID').value.trim().toUpperCase(); // Lấy mã và viết hoa
+    const hoten = document.getElementById('custName').value.trim();
+    const email = document.getElementById('custEmail').value.trim();
+    const khuvuc = document.getElementById('custRegion').value;
+    const matkhau = document.getElementById('custPassword').value.trim();
+
+    // Thêm kiểm tra mand vào validation
+    if (!mand || !hoten || !email || !khuvuc) {
+        showToast('Vui lòng nhập đầy đủ các trường bắt buộc màu đỏ!', 'warning');
+        return;
+    }
+
+    if (mand.length > 10) {
+        showToast('Mã khách hàng không được vượt quá 10 ký tự!', 'warning');
+        return;
+    }
+
+    // Đính kèm mand vào payload gửi đi
+    const payload = { mand, hoten, email, khuvuc, matkhau };
+
+    fetch('/api/staff/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (res.success) {
+            showToast(res.message, 'success');
+            toggleCustomerModal(false);
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(res.message, 'error');
+        }
+    })
+    .catch(() => showToast('Gặp sự cố khi kết nối dữ liệu máy chủ!', 'error'));
+}
+</script>
+{% endblock %}

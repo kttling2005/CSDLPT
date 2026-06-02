@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TechMart - Đăng Nhập Hệ Thống</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+:root {
+  --primary: #7C3AED;
+  --primary-light: #A78BFA;
+  --primary-dark: #5B21B6;
+  --accent: #F59E0B;
+  --bg: #F5F3FF;
+  --white: #FFFFFF;
+  --text: #1E1B4B;
+  --text2: #6B7280;
+  --border: #DDD6FE;
+  --danger: #EF4444;
+  --card-shadow: 0 4px 24px rgba(124,58,237,0.15);
+  --radius: 16px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-container {
+  width: 100%;
+  max-width: 420px;
+}
+
+/* Kế thừa style Brand từ Sidebar */
+.login-logo {
+  text-align: center;
+  margin-bottom: 24px;
+}
+.login-logo .brand {
+  font-family: 'Syne', sans-serif;
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--primary-dark);
+  letter-spacing: -0.5px;
+}
+.login-logo .brand span { color: var(--accent); }
+.login-logo .tagline {
+  font-size: 13px;
+  color: var(--text2);
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+/* Card đăng nhập đồng bộ hệ thống */
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--card-shadow);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  padding: 32px;
+}
+
+.card-title {
+  font-family: 'Plus Jakarta Sans', sans-serif !important;
+  font-size: 20px;
+  font-weight: 700 !important;
+  letter-spacing: -0.5px;
+
+  color: var(--text);
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+/* Form group & Form control */
+.form-group { margin-bottom: 20px; }
+.form-label { display: block; font-size: 13px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+
+.input-group {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.input-group i {
+  position: absolute;
+  left: 14px;
+  color: var(--primary-light);
+  font-size: 15px;
+}
+.form-control {
+  width: 100%;
+  padding: 12px 14px 12px 40px; /* Chừa khoảng trống bên trái cho icon */
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  background: white;
+  outline: none;
+  transition: all 0.2s;
+}
+.form-control:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.08);
+}
+
+/* Button xịn từ layout */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 12px 18px;
+  border-radius: 10px;
+  border: none;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-decoration: none;
+  width: 100%;
+  margin-top: 8px;
+}
+.btn-primary { background: var(--primary); color: white; }
+.btn-primary:hover {
+  background: var(--primary-dark);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(124,58,237,0.3);
+}
+
+/* Alert báo lỗi */
+.alert {
+  padding: 12px 16px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 500;
+  background: #FEF2F2;
+  color: #991B1B;
+  border-left: 3px solid var(--danger);
+}
+
+.footer-credit {
+  text-align: center;
+  margin-top: 24px;
+  font-size: 11px;
+  color: var(--text2);
+}
+</style>
+</head>
+<body>
+
+<div class="login-container">
+  <div class="login-logo">
+    <div class="brand">Tech<span>Mart</span></div>
+    <div class="tagline">Hệ thống bán hàng đa kho phân tán</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">ĐĂNG NHẬP HỆ THỐNG</div>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert">
+            <i class="fas fa-exclamation-circle"></i>
+            <span>{{ message }}</span>
+          </div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="POST" action="/login">
+      <div class="form-group">
+        <label for="username" class="form-label">Email</label>
+        <div class="input-group">
+          <i class="fas fa-user"></i>
+          <input type="text" class="form-control" id="email" name="email" placeholder="Nhập email..." required autocomplete="off">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label for="password" class="form-label">Mật khẩu</label>
+        <div class="input-group">
+          <i class="fas fa-lock"></i>
+          <input type="password" class="form-control" id="password" name="password" placeholder="Nhập mật khẩu..." required>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary">
+        <span>Đăng nhập</span> <i class="fas fa-arrow-right-to-bracket"></i>
+      </button>
+    </form>
+  </div>
+
+  <div class="footer-credit">
+    CSDL Phân tán — Demo System<br>
+    <span style="opacity: 0.6;">© 2026 TechMart</span>
+  </div>
+</div>
+
+</body>
+</html>

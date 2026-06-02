@@ -1,0 +1,13 @@
+# Chặn thư mục môi trường ảo venv
+.venv/
+venv/
+ENV/
+
+# Chặn các file cache của Python
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# (Tùy chọn) Nếu bạn dùng Mac, chặn thêm file ẩn của hệ thống
+.DS_Store

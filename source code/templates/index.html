@@ -1,0 +1,65 @@
+{% extends 'layout.html' %}
+
+{% block page_title %}<span style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important; letter-spacing: -0.5px;">Dashboard Tổng Quan</span>{% endblock %}
+{% block page_sub %}Hệ thống thống kê thời gian thực từ các phân mảnh miền{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+    <div class="stat-card purple">
+        <div class="stat-icon purple"><i class="fas fa-receipt"></i></div>
+        <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important;">{{ stats.total_orders }}</div>
+        <div class="stat-label">Tổng số đơn hàng</div>
+    </div>
+    
+    <div class="stat-card orange">
+        <div class="stat-icon orange"><i class="fas fa-dollar-sign"></i></div>
+        <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important;">{{ "{:,.0f}".format(stats.total_revenue) }} đ</div>
+        <div class="stat-label">Doanh thu hệ thống</div>
+    </div>
+    
+    <div class="stat-card green">
+        <div class="stat-icon green"><i class="fas fa-users"></i></div>
+        <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important;">{{ stats.total_customers }}</div>
+        <div class="stat-label">Tổng số khách hàng</div>
+    </div>
+    
+    <div class="stat-card pink">
+        <div class="stat-icon pink"><i class="fas fa-cubes"></i></div>
+        <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important;">{{ stats.total_products_in_stock }}</div>
+        <div class="stat-label">Tổng sản phẩm tồn kho</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-network-wired"></i> Trạng thái kết nối phân tán</div>
+    </div>
+    <div class="card-body">
+        <div class="query-flow">
+            <div class="site-node active">
+                <div class="node-icon">💻</div>
+                <div class="node-name">Database Trung Tâm</div>
+                <div class="node-status">Kết nối tốt</div>
+            </div>
+            <div class="arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="site-node">
+                <div class="node-icon">🏢</div>
+                <div class="node-name">Phân mảnh Hà Nội</div>
+                <div class="node-status">Đang hoạt động</div>
+            </div>
+            <div class="arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="site-node">
+                <div class="node-icon">🏢</div>
+                <div class="node-name">Phân mảnh Đà Nẵng</div>
+                <div class="node-status">Đang hoạt động</div>
+            </div>
+            <div class="arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="site-node">
+                <div class="node-icon">🏢</div>
+                <div class="node-name">Phân mảnh TPHCM</div>
+                <div class="node-status">Đang hoạt động</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

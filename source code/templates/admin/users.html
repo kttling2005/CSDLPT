@@ -1,0 +1,211 @@
+{% extends 'layout.html' %}
+
+{% block page_title %}
+<span style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 800 !important; letter-spacing: -0.5px; color: var(--text);">
+    Quản lý Thành viên
+</span>
+{% endblock %}
+{% block page_sub %}Cấu hình, phân quyền và giám sát tài khoản trên hệ thống CSDL tập trung{% endblock %}
+
+{% block content %}
+<!-- Thanh thống kê nhanh (Phụ trợ) -->
+<div class="stats-grid" style="margin-bottom: 24px;">
+  <div class="stat-card purple">
+    <div class="stat-icon purple"><i class="fas fa-user-shield"></i></div>
+    <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important;">
+      {{ users | selectattr('VaiTro', 'equalto', 'Admin') | list | length }}
+    </div>
+    <div class="stat-label">Quản trị viên (Admin)</div>
+  </div>
+  <div class="stat-card orange">
+    <div class="stat-icon orange"><i class="fas fa-user-tie"></i></div>
+    <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important;">
+      {{ users | selectattr('VaiTro', 'equalto', 'NhanVien') | list | length }}
+    </div>
+    <div class="stat-label">Nhân viên chi nhánh</div>
+  </div>
+  <div class="stat-card green">
+    <div class="stat-icon green"><i class="fas fa-users"></i></div>
+    <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important;">
+      {{ users | selectattr('VaiTro', 'equalto', 'KhachHang') | list | length }}
+    </div>
+    <div class="stat-label">Khách hàng thành viên</div>
+  </div>
+  <div class="stat-card pink">
+    <div class="stat-icon pink"><i class="fas fa-address-book"></i></div>
+    <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important;">{{ users | length }}</div>
+    <div class="stat-label">Tổng tài khoản</div>
+  </div>
+</div>
+
+<!-- Bảng danh sách chính -->
+<div class="card">
+  <div class="card-header">
+    <div class="card-title">
+      <i class="fas fa-users-gear text-primary" style="margin-right: 6px;"></i>
+      Danh sách tài khoản hệ thống
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="toggleModal(true)">
+        <i class="fas fa-user-plus"></i> Thêm tài khoản mới
+    </button>
+  </div>
+
+  <div class="card-body">
+    {% if users %}
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Mã ID</th>
+            <th>Họ và tên</th>
+            <th>Địa chỉ Email</th>
+            <th>Vai trò quyền lực</th>
+            <th style="text-align: right;">Hành động</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for u in users %}
+          <tr id="user-row-{{ u.MaND }}">
+            <td class="fw-bold" style="color: var(--text2);">#{{ u.MaND }}</td>
+            <td class="fw-bold">{{ u.HoTen }}</td>
+            <td class="text-muted">{{ u.Email }}</td>
+            <td>
+                {% if u.VaiTro == 'Admin' %}
+                    <span class="badge danger"><i class="fas fa-shield-alt"></i> Quản trị tối cao</span>
+                {% elif u.VaiTro == 'NhanVien' %}
+                    <span class="badge warning"><i class="fas fa-user-tie"></i> Nhân viên kho</span>
+                {% else %}
+                    <span class="badge info"><i class="fas fa-user"></i> Khách hàng</span>
+                {% endif %}
+            </td>
+            <td style="text-align: right;">
+                {% if u.MaND == session['user']['id'] %}
+                    <span class="text-muted" style="font-size: 12px; font-style: italic; padding-right: 12px;">Tài khoản của bạn</span>
+                {% else %}
+                    <button class="btn btn-outline btn-sm" style="color: var(--danger); border-color: var(--danger);" onclick="deleteUser({{ u.MaND }}, '{{ u.HoTen }}')">
+                        <i class="fas fa-trash-can"></i> Xóa
+                    </button>
+                {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="empty-state">
+        <i class="fas fa-users-slash"></i>
+        <p>Chưa có dữ liệu thành viên nào trong hệ thống.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- MODAL CỬA SỔ POPUP: THÊM USER MỚI -->
+<div class="modal-overlay" id="userModal">
+    <div class="modal">
+        <div class="modal-title"><i class="fas fa-user-plus text-primary"></i> Khởi tạo tài khoản hệ thống</div>
+
+        <div class="form-group">
+            <label class="form-label">Họ và tên người dùng</label>
+            <input type="text" id="addName" class="form-control" placeholder="Ví dụ: Nguyễn Văn A">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Địa chỉ Email (Dùng đăng nhập)</label>
+            <input type="email" id="addEmail" class="form-control" placeholder="name@techmart.com">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Mật khẩu khởi tạo</label>
+            <input type="password" id="addPassword" class="form-control" placeholder="Nhập mật khẩu bí mật">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Phân bổ vai trò</label>
+            <select id="addRole" class="form-control">
+                <option value="KhachHang">Khách hàng thành viên</option>
+                <option value="NhanVien">Nhân viên điều phối / Kiểm kho</option>
+                <option value="Admin">Quản trị viên toàn hệ thống (Admin)</option>
+            </select>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-top: 28px; border-top: 1px solid var(--border); padding-top: 16px;">
+            <button class="btn btn-outline" onclick="toggleModal(false)">Đóng lại</button>
+            <button class="btn btn-primary" onclick="submitAddUser()">Tạo tài khoản</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Hàm đóng mở modal thêm người dùng
+function toggleModal(show) {
+    const modal = document.getElementById('userModal');
+    if (show) {
+        modal.classList.add('active');
+    } else {
+        modal.classList.remove('active');
+        // Reset form khi đóng
+        document.getElementById('addName').value = '';
+        document.getElementById('addEmail').value = '';
+        document.getElementById('addPassword').value = '';
+    }
+}
+
+// Gửi dữ liệu tạo tài khoản lên API Flask thông qua Fetch
+function submitAddUser() {
+    const hoten = document.getElementById('addName').value.trim();
+    const email = document.getElementById('addEmail').value.trim();
+    const matkhau = document.getElementById('addPassword').value.trim();
+    const vaitro = document.getElementById('addRole').value;
+
+    if (!hoten || !email || !matkhau) {
+        showToast('Vui lòng nhập đầy đủ các trường thông tin bắt buộc!', 'warning');
+        return;
+    }
+
+    const data = { hoten, email, matkhau, vaitro };
+
+    fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(res => res.json())
+    .then(res => {
+        if (res.success) {
+            showToast(res.message, 'success');
+            toggleModal(false);
+            // Reload trang sau 1s để bảng cập nhật bản ghi mới từ DB
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showToast(res.message, 'error');
+        }
+    })
+    .catch(() => showToast('Mất kết nối tới máy chủ trung tâm!', 'error'));
+}
+
+// Thực hiện xóa tài khoản
+function deleteUser(userId, userName) {
+    if (!confirm(`Hành động này không thể hoàn tác! Bạn có thực sự muốn xóa tài khoản của [ ${userName} ] không?`)) {
+        return;
+    }
+
+    fetch(`/api/admin/users/${userId}`, { method: 'DELETE' })
+    .then(res => res.json())
+    .then(res => {
+        if (res.success) {
+            showToast(res.message, 'success');
+            // Xóa trực tiếp dòng đó trên giao diện (DOM) mà không cần reload lại toàn bộ trang
+            const row = document.getElementById(`user-row-${userId}`);
+            if (row) row.remove();
+        } else {
+            showToast(res.message, 'error');
+        }
+    })
+    .catch(() => showToast('Gặp sự cố khi gửi lệnh xóa dữ liệu!', 'error'));
+}
+</script>
+{% endblock %}

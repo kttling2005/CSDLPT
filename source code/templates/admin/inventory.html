@@ -1,0 +1,249 @@
+{% extends 'layout.html' %}
+
+{% block page_title %}
+<span style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important; letter-spacing: -0.5px;">
+    Quản Lý Tồn Kho Phân Tán
+</span>
+{% endblock %}
+
+{% block page_sub %}Số liệu tồn kho thời gian thực được truy vấn từ các phân mảnh miền (HN, DN, HCM){% endblock %}
+
+{% block content %}
+<div class="stats-grid" style="grid-template-columns: repeat(3, 1fr); margin-bottom: 24px;">
+    <div class="stat-card purple">
+        <div class="stat-icon purple"><i class="fas fa-map-marker-alt"></i></div>
+        <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-size: 20px; font-weight: 700 !important;">Phân mảnh phía Bắc</div>
+        <div class="stat-label">Site Hà Nội (TonKho_HN)</div>
+    </div>
+    <div class="stat-card green">
+        <div class="stat-icon green"><i class="fas fa-map-marker-alt"></i></div>
+        <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-size: 20px; font-weight: 700 !important;">Phân mảnh miền Trung</div>
+        <div class="stat-label">Site Đà Nẵng (TonKho_DN)</div>
+    </div>
+    <div class="stat-card orange">
+        <div class="stat-icon orange"><i class="fas fa-map-marker-alt"></i></div>
+        <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-size: 20px; font-weight: 700 !important;">Phân mảnh phía Nam</div>
+        <div class="stat-label">Site TPHCM (TonKho_HCM)</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+        <div class="card-title"><i class="fas fa-boxes-stacked"></i> Bảng tổng hợp tồn kho toàn hệ thống</div>
+        <div style="display: flex; gap: 10px;">
+            <button class="btn btn-primary btn-sm" onclick="openTrackModal()" style="font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 600;">
+                <i class="fas fa-search-location"></i> Kiểm tra Tồn kho SP nhanh
+            </button>
+            <button class="btn btn-outline btn-sm" onclick="window.location.reload();">
+                <i class="fas fa-sync-alt"></i> Làm mới dữ liệu
+            </button>
+        </div>
+    </div>
+
+    <div class="card-body">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Khu vực (Site)</th>
+                        <th>Mã Kho hàng</th>
+                        <th>Mã Sản phẩm</th>
+                        <th>Số lượng tồn hiện tại</th>
+                        <th>Trạng thái kho</th>
+                        <th style="text-align: center;">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if inventory %}
+                        {% for item in inventory %}
+                        <tr>
+                            <td>
+                                {% if item.KhuVuc == 'Hà Nội' or item.KhuVuc == 'HN' %}
+                                    <span class="warehouse-tag hn"><i class="fas fa-building"></i> Hà Nội</span>
+                                {% elif item.KhuVuc == 'Đà Nẵng' or item.KhuVuc == 'DN' %}
+                                    <span class="warehouse-tag dn"><i class="fas fa-building"></i> Đà Nẵng</span>
+                                {% else %}
+                                    <span class="warehouse-tag hcm"><i class="fas fa-building"></i> TPHCM</span>
+                                {% endif %}
+                            </td>
+                            <td><span class="badge info fw-bold">{{ item.MaKho }}</span></td>
+                            <td class="fw-bold text-primary">{{ item.MaSP }}</td>
+                            <td>
+                                <span class="fw-bold" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-size: 15px;">
+                                    {{ item.SoLuong }} cái
+                                </span>
+                            </td>
+                            <td>
+                                {% if item.SoLuong > 50 %}
+                                    <span class="badge success"><div style="width:6px;height:6px;border-radius:50%;background:#10B981;display:inline-block;margin-right:5px;"></div> Còn hàng dồi dào</span>
+                                {% elif item.SoLuong > 0 %}
+                                    <span class="badge warning"><div style="width:6px;height:6px;border-radius:50%;background:#F59E0B;display:inline-block;margin-right:5px;"></div> Sắp hết hàng</span>
+                                {% else %}
+                                    <span class="badge danger"><div style="width:6px;height:6px;border-radius:50%;background:#EF4444;display:inline-block;margin-right:5px;"></div> Cháy hàng</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center;">
+                                <button class="btn btn-outline btn-sm" style="padding: 4px 10px;" onclick="trackProduct('{{ item.MaSP }}')">
+                                    <i class="fas fa-eye"></i> Kiểm tra SP còn hàng ở kho nào
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="6">
+                                <div class="empty-state">
+                                    <i class="fas fa-boxes-packing"></i>
+                                    <p>Không lấy được dữ liệu tồn kho phân tán. Vui lòng kiểm tra lại kết nối các site miền!</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- ==============================================================================
+     MODAL ĐỊNH VỊ SẢN PHẨM PHÂN TÁN (BẬT LÊN KHI ẤN KIỂM TRA)
+     ============================================================================== -->
+<div id="trackModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; font-family: 'Plus Jakarta Sans', sans-serif;">
+    <div style="background: white; padding: 24px; border-radius: 12px; width: 90%; max-width: 600px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 1px solid #e5e7eb; padding-bottom: 12px;">
+            <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #1f2937;" id="modalTitle">Định vị sản phẩm phân tán</h3>
+            <button onclick="closeTrackModal()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #9ca3af;"><i class="fas fa-times"></i></button>
+        </div>
+
+        <!-- Thanh tìm kiếm thủ công tự gõ mã sản phẩm -->
+        <div style="display: flex; gap: 8px; margin-bottom: 16px;" id="manualSearchArea">
+            <input type="text" id="searchProductInput" placeholder="Nhập mã sản phẩm cần tra cứu (Ví dụ: SP01)..." style="flex: 1; padding: 8px 12px; border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;">
+            <button class="btn btn-primary btn-sm" onclick="performManualSearch()">Tìm kiếm</button>
+        </div>
+
+        <!-- Trạng thái Loading -->
+        <div id="modalLoading" style="display: none; text-align: center; padding: 20px; color: #4b5563;">
+            <i class="fas fa-spinner fa-spin" style="font-size: 24px; margin-bottom: 8px; color: #6366f1;"></i>
+            <p style="margin: 0; font-size: 14px;">Đang gửi truy vấn đồng thời tới các cơ sở hạ tầng miền...</p>
+        </div>
+
+        <!-- Vùng hiển thị danh sách các kho hàng -->
+        <div id="modalContent" style="margin-top: 12px;"></div>
+    </div>
+</div>
+
+<!-- ==============================================================================
+     JAVASCRIPT XỬ LÝ AJAX TÌM KIẾM
+     ============================================================================== -->
+<script>
+function openTrackModal() {
+    document.getElementById('trackModal').style.display = 'flex';
+    document.getElementById('manualSearchArea').style.display = 'flex';
+    document.getElementById('modalTitle').innerText = "Tra cứu vị trí sản phẩm toàn hệ thống";
+    document.getElementById('modalContent').innerHTML = '<p style="color: #6b7280; text-align: center; padding: 20px; font-size: 14px;">Vui lòng nhập mã sản phẩm ở trên để bắt đầu định vị.</p>';
+}
+
+function closeTrackModal() {
+    document.getElementById('trackModal').style.display = 'none';
+    document.getElementById('searchProductInput').value = '';
+    document.getElementById('modalLoading').style.display = 'none';
+    document.getElementById('modalContent').innerHTML = '';
+}
+
+function performManualSearch() {
+    const maSp = document.getElementById('searchProductInput').value.trim();
+    if (!maSp) {
+        alert("Vui lòng gõ mã sản phẩm cần tra cứu!");
+        return;
+    }
+    fetchLocationData(maSp);
+}
+
+function trackProduct(maSp) {
+    document.getElementById('trackModal').style.display = 'flex';
+    document.getElementById('manualSearchArea').style.display = 'none'; // Ẩn thanh nhập thủ công vì đã chọn trực tiếp ở dòng
+    document.getElementById('modalTitle').innerText = `Vị trí kho thực tế của sản phẩm: ${maSp}`;
+    fetchLocationData(maSp);
+}
+function fetchLocationData(maSp) {
+    const loading = document.getElementById('modalLoading');
+    const content = document.getElementById('modalContent');
+
+    loading.style.display = 'block';
+    content.innerHTML = '';
+
+    fetch(`/api/admin/track-product/${maSp}`)
+        .then(res => res.json())
+        .then(res => {
+            loading.style.display = 'none';
+            if (!res.success) {
+                content.innerHTML = `<div style="color: #b91c1c; padding: 12px; background: #fee2e2; border-radius: 6px; font-size: 14px;">${res.message}</div>`;
+                return;
+            }
+
+            if (!res.data || res.data.length === 0) {
+                content.innerHTML = `
+                    <div style="text-align: center; padding: 30px; color: #4b5563;">
+                        <i class="fas fa-cubes" style="font-size: 32px; color: #9ca3af; margin-bottom: 10px; display: block;"></i>
+                        Mã sản phẩm <strong>${maSp}</strong> hiện đang không có hàng hoặc không tồn tại ở bất kỳ kho nào thuộc 3 phân mảng miền!
+                    </div>`;
+                return;
+            }
+
+            // Tạo bảng hiển thị danh sách phân phối
+            let html = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 14px; margin-top: 10px;">
+                    <thead>
+                        <tr style="background: #f8fafc; text-align: left;">
+                            <th style="padding: 12px 10px; border-bottom: 2px solid #e2e8f0; color: #64748b;">Phân mảnh</th>
+                            <th style="padding: 12px 10px; border-bottom: 2px solid #e2e8f0; color: #64748b;">Mã Cơ sở Kho</th>
+                            <th style="padding: 12px 10px; border-bottom: 2px solid #e2e8f0; color: #64748b; text-align: right;">Tồn thực tế</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            // Biến dùng để tính tổng gộp cộng dồn các kho
+            let tongTonHeThong = 0;
+
+            res.data.forEach(item => {
+                let tagClass = 'hcm';
+                if(item.KhuVuc === 'Hà Nội' || item.KhuVuc === 'HN') tagClass = 'hn';
+                if(item.KhuVuc === 'Đà Nẵng' || item.KhuVuc === 'DN') tagClass = 'dn';
+
+                // Cộng dồn số lượng
+                tongTonHeThong += parseInt(item.SoLuong || 0);
+
+                html += `
+                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                        <td style="padding: 12px 10px;">
+                            <span class="warehouse-tag ${tagClass}"><i class="fas fa-network-wired"></i> ${item.KhuVuc}</span>
+                        </td>
+                        <td style="padding: 12px 10px;"><span class="badge info fw-bold">${item.MaKho}</span></td>
+                        <td style="padding: 12px 10px; text-align: right; color: #0f172a; font-weight: 700;">${item.SoLuong} cái</td>
+                    </tr>
+                `;
+            });
+
+            // THÊM HÀNG CHỐT TỔNG Ở DƯỚI CÙNG CỦA BẢNG MODAL
+            html += `
+                    <tr style="background: #f8fafc; border-top: 2px solid #e2e8f0; font-weight: 700;">
+                        <td colspan="2" style="padding: 14px 10px; color: #4f46e5; font-size: 14px;">
+                            <i class="fas fa-globe"></i> TỔNG TỒN TOÀN HỆ THỐNG:
+                        </td>
+                        <td style="padding: 14px 10px; text-align: right; color: #4f46e5; font-size: 16px;">
+                            ${tongTonHeThong} cái
+                        </td>
+                    </tr>
+                </tbody>
+            </table>`;
+
+            content.innerHTML = html;
+        })
+        .catch(err => {
+            loading.style.display = 'none';
+            content.innerHTML = `<div style="color: #b91c1c; padding: 12px; background: #fee2e2; border-radius: 6px; font-size: 14px;">Lỗi: Không thể kết nối với dịch vụ API hệ thống.</div>`;
+        });
+}
+</script>
+{% endblock %}

@@ -1,0 +1,48 @@
+services:
+
+  mysql_hn:
+    image: mysql:8.0
+    container_name: mysql_hn
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_hn_data:/var/lib/mysql
+    networks:
+      - distributed_net
+
+  mysql_dn:
+    image: mysql:8.0
+    container_name: mysql_dn
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_dn_data:/var/lib/mysql
+    networks:
+      - distributed_net
+
+  mysql_hcm:
+    image: mysql:8.0
+    container_name: mysql_hcm
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root123
+    ports:
+      - "3309:3306"
+    volumes:
+      - mysql_hcm_data:/var/lib/mysql
+    networks:
+      - distributed_net
+
+volumes:
+  mysql_hn_data:
+  mysql_dn_data:
+  mysql_hcm_data:
+
+networks:
+  distributed_net:

@@ -1,0 +1,299 @@
+{% extends 'layout.html' %}
+
+{% block page_title %}
+<span style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important; letter-spacing: -0.5px;">
+    Quản Lý Đơn Hàng Phân Tán
+</span>
+{% endblock %}
+
+{% block page_sub %}Danh sách toàn bộ đơn hàng lưu trữ tập trung và lịch sử xuất kho chi nhánh{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-receipt"></i> Lịch sử đặt hàng toàn hệ thống</div>
+        <button class="btn btn-success btn-sm" onclick="showToast('Hệ thống đặt hàng tự động qua API đang hoạt động tốt!', 'success')">
+            <i class="fas fa-signal"></i> Trạng thái: Real-time
+        </button>
+    </div>
+    
+    <div class="card-body">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mã Đơn</th>
+                        <th>Khách Hàng</th>
+                        <th>Khu Vực</th>
+                        <th>Ngày Đặt</th>
+                        <th>Tổng Tiền</th>
+                        <th>Trạng Thái</th>
+                        <th>Hành Động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if orders %}
+                        {% for order in orders %}
+                        <tr>
+                            <td><span class="badge purple fw-bold">#{{ order.MaDH }}</span></td>
+                            <td class="fw-bold">{{ order.TenKhachHang }}</td>
+                            <td>
+                                {% if 'Hà Nội' in order.KhuVuc or 'HN' in order.KhuVuc %}
+                                    <span class="warehouse-tag hn">Hà Nội</span>
+                                {% elif 'Đà Nẵng' in order.KhuVuc or 'DN' in order.KhuVuc %}
+                                    <span class="warehouse-tag dn">Đà Nẵng</span>
+                                {% else %}
+                                    <span class="warehouse-tag hcm">TPHCM</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-muted">{{ order.NgayDat }}</td>
+                            <td>
+                                <span class="price" style="font-family: 'Plus Jakarta Sans', sans-serif !important;">
+                                    {{ "{:,.0f}".format(order.TongTien) }} đ
+                                </span>
+                            </td>
+                            <td>
+                                {% if order.TrangThai == 'ChoXuLy' or order.TrangThai == 'Chờ xử lý' %}
+                                    <span class="badge warning"><i class="fas fa-clock"></i> Chờ xử lý</span>
+                                {% elif order.TrangThai == 'DangGiao' or order.TrangThai == 'Đang giao' %}
+                                    <span class="badge info"><i class="fas fa-truck"></i> Đang giao</span>
+                                {% elif order.TrangThai == 'DaGiao' or order.TrangThai == 'Đã giao' %}
+                                    <span class="badge success"><i class="fas fa-check-circle"></i> Đã giao</span>
+                                {% else %}
+                                    <span class="badge danger"><i class="fas fa-times-circle"></i> {{ order.TrangThai }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <button class="btn btn-outline btn-sm"
+                                        style="padding: 6px 12px; border-radius: 6px; font-family: 'Plus Jakarta Sans', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; border: 1px solid #cbd5e1; background: #fff; color: #334155;"
+                                        onclick="loadAndOpenOrderModal('{{ order.MaDH }}')">
+                                    <i class="fas fa-eye" style="margin-right: 4px; color: #64748b;"></i> Chi tiết
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7">
+                                <div class="empty-state">
+                                    <i class="fas fa-receipt" style="opacity: 0.2; font-size: 48px;"></i>
+                                    <p>Chưa có đơn hàng nào được tạo trong hệ thống.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<div id="orderDetailModal" style="
+    display: none;
+    position: fixed;
+    z-index: 9999;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(4px);
+    justify-content: center;
+    align-items: center;
+    transition: all 0.3s ease;
+">
+    <div style="
+        background-color: #ffffff;
+        padding: 24px;
+        border-radius: 12px;
+        width: 100%;
+        max-width: 550px;
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+        font-family: 'Plus Jakarta Sans', sans-serif;
+    ">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #e2e8f0; padding-bottom: 12px;">
+            <h3 style="margin: 0; font-size: 18px; font-weight: 700; color: #1e293b;">
+                📄 Chi tiết đơn hàng <span id="modalOrderId" style="color: #6366f1;"></span>
+            </h3>
+            <span onclick="closeOrderModal()" style="cursor: pointer; font-size: 20px; color: #94a3b8;" onmouseover="this.style.color='#64748b'" onmouseout="this.style.color='#94a3b8'">&times;</span>
+        </div>
+
+        <div style="font-size: 14px; color: #475569; line-height: 1.8; margin-bottom: 20px;">
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                <p style="margin: 0;"><strong>Khách hàng:</strong> <span id="modalCustomerName" style="color: #1e293b; font-weight: 600;"></span></p>
+                <p style="margin: 0;"><strong>Khu vực:</strong> <span id="modalRegion"></span></p>
+                <p style="margin: 0;"><strong>Ngày đặt:</strong> <span id="modalOrderDate"></span></p>
+                <p style="margin: 0;"><strong>Mã kho xuất:</strong> <span id="modalWarehouseCode" class="badge purple fw-bold" style="font-size: 11px; padding: 2px 6px;"></span></p>
+            </div>
+
+            <div style="margin-top: 16px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px; text-align: left;">
+                    <thead style="background-color: #f8fafc; border-bottom: 1px solid #e2e8f0;">
+                        <tr>
+                            <th style="padding: 8px 12px; color: #64748b; font-weight: 600;">Sản phẩm</th>
+                            <th style="padding: 8px 12px; color: #64748b; font-weight: 600; text-align: center;">SL</th>
+                            <th style="padding: 8px 12px; color: #64748b; font-weight: 600; text-align: right;">Đơn giá</th>
+                            <th style="padding: 8px 12px; color: #64748b; font-weight: 600; text-align: right;">Tổng</th>
+                        </tr>
+                    </thead>
+                    <tbody id="modalProductTableBody">
+                        </tbody>
+                </table>
+            </div>
+
+            <p style="margin: 14px 0 0 0; text-align: right; font-size: 15px;">
+                <strong>Tổng tiền đơn:</strong> <span id="modalTotalAmount" style="color: #ef4444; font-weight: 700;"></span>
+            </p>
+
+            <hr style="border: 0; border-top: 1px solid #f1f5f9; margin: 16px 0;">
+
+            <label style="display: block; font-weight: 700; color: #1e293b; margin-bottom: 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px;">
+                Cập nhật trạng thái đơn:
+            </label>
+            <div style="position: relative; display: block; width: 100%;">
+                <select id="modalStatusSelect" style="
+                    width: 100%;
+                    padding: 10px 36px 10px 12px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: #334155;
+                    background-color: #f8fafc;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    appearance: none;
+                    -webkit-appearance: none;
+                ">
+                    <option value="ChoXuLy">Chờ xử lý</option>
+                    <option value="DangGiao">Đang giao</option>
+                    <option value="DaGiao">Đã giao</option>
+                    <option value="DaHuy">Hủy đơn</option>
+                </select>
+                <i class="fas fa-chevron-down" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 12px; color: #64748b; pointer-events: none;"></i>
+            </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; gap: 12px;">
+            <button type="button" onclick="closeOrderModal()" style="padding: 8px 16px; border: 1px solid #cbd5e1; background: #fff; border-radius: 6px; font-weight: 600; color: #64748b; cursor: pointer;">Đóng</button>
+            <button type="button" onclick="submitStatusUpdate()" style="padding: 8px 16px; border: none; background: #6366f1; border-radius: 6px; font-weight: 600; color: #fff; cursor: pointer; box-shadow: 0 4px 6px -1px rgba(99, 102, 241, 0.2);">Lưu thay đổi</button>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentSelectedOrderId = null;
+
+function loadAndOpenOrderModal(orderId) {
+    currentSelectedOrderId = orderId;
+
+    fetch(`/api/customer/order/${orderId}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const order = data.order;
+            const details = data.details;
+
+            // 1. Đổ dữ liệu tổng quan đơn hàng
+            document.getElementById('modalOrderId').innerText = `#${order.MaDH}`;
+            document.getElementById('modalOrderDate').innerText = order.NgayDat;
+            document.getElementById('modalTotalAmount').innerText = parseFloat(order.TongTien).toLocaleString('vi-VN') + ' đ';
+            document.getElementById('modalCustomerName').innerText = order.TenKhachHang || "Khách hàng hệ thống";
+
+            // Xử lý hiển thị Tag Khu Vực trong Modal
+            const regionEl = document.getElementById('modalRegion');
+            const regionData = order.KhuVuc || '';
+            if (regionData.includes('Hà Nội') || regionData.includes('HN')) {
+                regionEl.innerHTML = '<span class="warehouse-tag hn">Hà Nội</span>';
+            } else if (regionData.includes('Đà Nẵng') || regionData.includes('DN')) {
+                regionEl.innerHTML = '<span class="warehouse-tag dn">Đà Nẵng</span>';
+            } else if (regionData) {
+                regionEl.innerHTML = '<span class="warehouse-tag hcm">TPHCM</span>';
+            } else {
+                regionEl.innerHTML = '<span class="text-muted" style="font-size: 13px;">Chưa rõ</span>';
+            }
+
+            // 2. Xử lý hiển thị Mã Kho kết hợp
+            const uniqueWarehouses = [...new Set(details.map(item => item.MaKho).filter(Boolean))];
+            const warehouseText = uniqueWarehouses.length > 0 ? uniqueWarehouses.join(', ') : 'Chưa rõ kho';
+            document.getElementById('modalWarehouseCode').innerText = warehouseText;
+
+            // 3. VẼ DANH SÁCH SẢN PHẨM VÀO BẢNG CHUYÊN NGHIỆP
+            const tableBody = document.getElementById('modalProductTableBody');
+            tableBody.innerHTML = ''; // Reset bảng cũ
+
+            details.forEach(item => {
+                const itemTotal = item.SoLuong * item.DonGia;
+                const row = document.createElement('tr');
+                row.style.borderBottom = '1px solid #f1f5f9';
+                row.innerHTML = `
+                    <td style="padding: 8px 12px;">
+                        <div style="font-weight: 600; color: #1e293b;">${item.TenSP || 'Sản phẩm lỗi/Xóa'}</div>
+                        <div style="font-size: 11px; color: #94a3b8;">Mã SP: ${item.MaSP}</div>
+                    </td>
+                    <td style="padding: 8px 12px; text-align: center; color: #334155; font-weight: 600;">${item.SoLuong}</td>
+                    <td style="padding: 8px 12px; text-align: right; color: #64748b;">${parseFloat(item.DonGia).toLocaleString('vi-VN')} đ</td>
+                    <td style="padding: 8px 12px; text-align: right; color: #0f172a; font-weight: 600;">${itemTotal.toLocaleString('vi-VN')} đ</td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            // 4. Chọn đúng option trạng thái hiện tại
+            const selectEl = document.getElementById('modalStatusSelect');
+            const status = order.TrangThai;
+            if (status === 'ChoXuLy' || status === 'Chờ xử lý') selectEl.value = 'ChoXuLy';
+            else if (status === 'DangGiao' || status === 'Đang giao') selectEl.value = 'DangGiao';
+            else if (status === 'DaGiao' || status === 'Đã giao') selectEl.value = 'DaGiao';
+            else if (status === 'DaHuy' || status === 'Đã hủy') selectEl.value = 'DaHuy';
+
+            // 5. Hiển thị modal lên bằng flexbox
+            document.getElementById('orderDetailModal').style.display = 'flex';
+        } else {
+            showToast(data.message, 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Không thể tải chi tiết đơn hàng!', 'danger');
+    });
+}
+
+function closeOrderModal() {
+    document.getElementById('orderDetailModal').style.display = 'none';
+}
+
+window.onclick = function(event) {
+    const modal = document.getElementById('orderDetailModal');
+    if (event.target === modal) {
+        closeOrderModal();
+    }
+}
+
+function submitStatusUpdate() {
+    if (!currentSelectedOrderId) return;
+
+    const newStatus = document.getElementById('modalStatusSelect').value;
+
+    fetch(`/api/admin/orders/${currentSelectedOrderId}/status`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ status: newStatus })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast(data.message, 'success');
+            closeOrderModal();
+            setTimeout(() => { window.location.reload(); }, 1000);
+        } else {
+            showToast(data.message || 'Cập nhật trạng thái thất bại!', 'danger');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showToast('Có lỗi xảy ra kết nối hệ thống!', 'danger');
+    });
+}
+</script>
+{% endblock %}

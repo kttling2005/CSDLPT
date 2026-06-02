@@ -1,0 +1,105 @@
+{% extends 'layout.html' %}
+
+{% block page_title %}
+<span style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important; letter-spacing: -0.5px;">
+    Giám Sát Truy Vấn Phân Tán (Q5)
+</span>
+{% endblock %}
+
+{% block page_sub %}Minh chứng nghiệp vụ nâng cao: Các đơn hàng phân tán cần xuất kho từ nhiều chi nhánh khác nhau{% endblock %}
+
+{% block content %}
+<div class="card mb-24">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-project-diagram"></i> Mô hình hóa luồng xử lý Transaction phân tán</div>
+    </div>
+    <div class="card-body">
+        <div class="query-flow">
+            <div class="site-node active">
+                <div class="node-icon">🛒</div>
+                <div class="node-name">Khách hàng đặt đơn</div>
+                <div class="node-status">Kiểm tra kho ưu tiên</div>
+            </div>
+            <div class="arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="site-node active" style="border-color: var(--warning); background: rgba(245,158,11,0.15);">
+                <div class="node-icon">⚠️</div>
+                <div class="node-name">Kho chính thiếu hàng</div>
+                <div class="node-status">Kích hoạt Fallback</div>
+            </div>
+            <div class="arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="site-node" style="border-color: var(--success); background: rgba(16,185,129,0.15);">
+                <div class="node-icon">⚡</div>
+                <div class="node-name">Quét các Site miền</div>
+                <div class="node-status">SELECT FOR UPDATE</div>
+            </div>
+            <div class="arrow"><i class="fas fa-arrow-right"></i></div>
+            <div class="site-node">
+                <div class="node-icon">📝</div>
+                <div class="node-name">Ghi DB Trung Tâm</div>
+                <div class="node-status">Trừ kho đồng thời</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-network-wired"></i> Danh sách đơn hàng xuất kho liên chi nhánh</div>
+        <span class="badge danger fw-bold">Tính chất phân tán cao</span>
+    </div>
+    
+    <div class="card-body">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mã Đơn</th>
+                        <th>Khách Hàng</th>
+                        <th>Mã Sản Phẩm</th>
+                        <th>Tên Sản Phẩm</th>
+                        <th>Kho Xuất Hàng</th>
+                        <th>Vị Trí Kho</th>
+                        <th>Số Lượng Xuất</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if orders %}
+                        {% for ord in orders %}
+                        <tr>
+                            <td><span class="badge danger fw-bold">#{{ ord.MaDH }}</span></td>
+                            <td class="fw-bold">{{ ord.TenKhachHang }}</td>
+                            <td><span class="badge info fw-bold">{{ ord.MaSP }}</span></td>
+                            <td class="text-primary fw-bold">{{ ord.TenSP }}</td>
+                            <td><span class="badge purple fw-bold">{{ ord.MaKho }}</span></td>
+                            <td>
+                                {% if ord.KhuVucKho == 'Hà Nội' %}
+                                    <span class="warehouse-tag hn">Hà Nội</span>
+                                {% elif ord.KhuVucKho == 'Đà Nẵng' %}
+                                    <span class="warehouse-tag dn">Đà Nẵng</span>
+                                {% else %}
+                                    <span class="warehouse-tag hcm">TPHCM</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="fw-bold text-success" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-size: 15px;">
+                                    {{ ord.SoLuong }} cái
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7">
+                                <div class="empty-state">
+                                    <i class="fas fa-chart-line"></i>
+                                    <p>Hiện chưa phát sinh đơn hàng phân tán nào xuất từ 2 kho trở lên (Các kho ưu tiên vẫn đang đủ hàng cung ứng).</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends 'layout.html' %}
+
+{% block page_title %}<span style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important; letter-spacing: -0.5px;">Dashboard Chi Nhánh</span>{% endblock %}
+{% block page_sub %}Thống kê dữ liệu thời gian thực từ phân mảnh chi nhánh: <strong>{{ stats.region }}</strong>{% endblock %}
+
+{% block content %}
+<div class="stats-grid">
+    <div class="stat-card purple">
+        <div class="stat-icon purple"><i class="fas fa-boxes"></i></div>
+        <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important;">{{ stats.total_stock_rows }}</div>
+        <div class="stat-label">Số mặt hàng đang lưu kho</div>
+    </div>
+
+    <div class="stat-card orange">
+        <div class="stat-icon orange"><i class="fas fa-cubes"></i></div>
+        <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important;">{{ "{:,.0f}".format(stats.total_qty) }}</div>
+        <div class="stat-label">Tổng số lượng sản phẩm tồn</div>
+    </div>
+
+    <div class="stat-card green">
+        <div class="stat-icon green"><i class="fas fa-exchange-alt"></i></div>
+        <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important;">{{ stats.total_tx }}</div>
+        <div class="stat-label">Số phiếu Nhập / Xuất kho</div>
+    </div>
+
+    <div class="stat-card pink">
+        <div class="stat-icon pink"><i class="fas fa-database"></i></div>
+        <div class="stat-value" style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important; font-size: 1.5rem; word-break: break-all;">{{ stats.db_name }}</div>
+        <div class="stat-label">Cơ sở dữ liệu cục bộ</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-network-wired"></i> Luồng đồng bộ & Định tuyến phân tán</div>
+    </div>
+    <div class="card-body">
+        <div class="query-flow">
+            <div class="site-node">
+                <div class="node-icon">💻</div>
+                <div class="node-name">Database Trung Tâm</div>
+                <div class="node-status">Kết nối đồng bộ</div>
+            </div>
+            
+            <div class="arrow"><i class="fas fa-exchange-alt"></i></div>
+            
+            <div class="site-node active">
+                <div class="node-icon">🏢</div>
+                <div class="node-name">Chi Nhánh {{ stats.region }}</div>
+                <div class="node-status">Đang kết nối cục bộ</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

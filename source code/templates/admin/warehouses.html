@@ -1,0 +1,165 @@
+{% extends 'layout.html' %}
+
+{% block page_title %}
+<span style="font-family: 'Plus Jakarta Sans', sans-serif !important; font-weight: 700 !important; letter-spacing: -0.5px;">
+    Quản Lý Danh Mục Kho Hàng
+</span>
+{% endblock %}
+
+{% block page_sub %}Quản trị cấu trúc phân mảnh ngang dữ liệu kho miền (Bắc - Trung - Nam){% endblock %}
+
+{% block content %}
+<div class="card" style="margin-bottom: 24px;">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-plus-circle"></i> Khai báo thêm kho hàng vật lý mới</div>
+    </div>
+    <div class="card-body">
+        <form id="formAddWarehouse" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; align-items: end;">
+            <div>
+                <label style="display:block; margin-bottom: 6px; font-weight:600; font-size:13px;">Mã Kho (<span class="text-danger">*</span>)</label>
+                <input type="text" id="ma_kho" placeholder="Ví dụ: KH_HN03" required style="width:100%; padding: 8px 12px; border: 1px solid #E2E8F0; border-radius: 6px;">
+            </div>
+            <div>
+                <label style="display:block; margin-bottom: 6px; font-weight:600; font-size:13px;">Tên Kho Hàng (<span class="text-danger">*</span>)</label>
+                <input type="text" id="ten_kho" placeholder="Ví dụ: Kho Long Biên" required style="width:100%; padding: 8px 12px; border: 1px solid #E2E8F0; border-radius: 6px;">
+            </div>
+            <div>
+                <label style="display:block; margin-bottom: 6px; font-weight:600; font-size:13px;">Khu Vực Phân Mảnh (<span class="text-danger">*</span>)</label>
+                <select id="khu_vuc" required style="width:100%; padding: 8px 12px; border: 1px solid #E2E8F0; border-radius: 6px; background-color: #fff;">
+                    <option value="" disabled selected>-- Chọn khu vực --</option>
+                    <option value="Hà Nội">Site Hà Nội (Node_North)</option>
+                    <option value="Đà Nẵng">Site Đà Nẵng (Node_Central)</option>
+                    <option value="HCM">Site TPHCM (Node_South)</option>
+                </select>
+            </div>
+            <div>
+                <label style="display:block; margin-bottom: 6px; font-weight:600; font-size:13px;">Địa Chỉ Chi Tiết</label>
+                <input type="text" id="dia_chi" placeholder="Số 12, Đường ABC..." style="width:100%; padding: 8px 12px; border: 1px solid #E2E8F0; border-radius: 6px;">
+            </div>
+            <div>
+                <button type="submit" class="btn btn-primary" style="width: 100%; padding: 9px; font-weight: 600; border-radius: 6px; background: #4F46E5; color: white; border: none; cursor: pointer;">
+                    <i class="fas fa-save"></i> Lưu CSDL
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">
+        <div class="card-title"><i class="fas fa-warehouse"></i> Các kho hàng vật lý đang hoạt động phân tán</div>
+    </div>
+
+    <div class="card-body">
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Mã Kho</th>
+                        <th>Tên Kho Hàng</th>
+                        <th>Địa Chỉ Thực Tế</th>
+                        <th>Khu Vực Gốc</th>
+                        <th style="text-align: center;">Hành Động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if warehouses %}
+                        {% for wh in warehouses %}
+                        <tr id="row-{{ wh.MaKho }}">
+                            <td><span class="badge purple fw-bold">{{ wh.MaKho }}</span></td>
+                            <td class="fw-bold" style="color: #1E293B;">{{ wh.TenKho }}</td>
+                            <td><span style="font-size: 13px; color: #64748B;">{{ wh.DiaChi or 'Chưa cập nhật' }}</span></td>
+                            <td>
+                                {% if wh.KhuVuc == 'Hà Nội' %}
+                                    <span class="warehouse-tag hn" style="font-size: 13px; padding: 6px 12px;"><i class="fas fa-server"></i> Site Hà Nội</span>
+                                {% elif wh.KhuVuc == 'Đà Nẵng' %}
+                                    <span class="warehouse-tag dn" style="font-size: 13px; padding: 6px 12px;"><i class="fas fa-server"></i> Site Đà Nẵng</span>
+                                {% else %}
+                                    <span class="warehouse-tag hcm" style="font-size: 13px; padding: 6px 12px;"><i class="fas fa-server"></i> Site TPHCM</span>
+                                {% endif %}
+                            </td>
+                            <td style="text-align: center;">
+                                <button onclick="deleteWarehouse('{{ wh.MaKho }}', '{{ wh.KhuVuc }}')" class="btn btn-danger" style="padding: 4px 10px; font-size: 12px; background: #EF4444; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                                    <i class="fas fa-trash-alt"></i> Xóa Kho
+                                </button>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="5">
+                                <div class="empty-state">
+                                    <i class="fas fa-network-wired"></i>
+                                    <p>Không truy vấn được danh sách kho hoặc các dữ liệu phân mảnh đang trống.</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+// 1. Xử lý sự kiện gửi Form Thêm Kho hàng
+document.getElementById('formAddWarehouse').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const payload = {
+        ma_kho: document.getElementById('ma_kho').value,
+        ten_kho: document.getElementById('ten_kho').value,
+        khu_vuc: document.getElementById('khu_vuc').value,
+        dia_chi: document.getElementById('dia_chi').value
+    };
+
+    fetch('/api/admin/warehouses', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.reload(); // Thêm thành công load lại trang để cập nhật bảng
+        } else {
+            alert("Lỗi: " + data.message);
+        }
+    })
+    .catch(err => {
+        console.error("Error:", err);
+        alert("Có lỗi đường truyền xảy ra khi kết nối tới node!");
+    });
+});
+
+// 2. Xử lý sự kiện Xóa Kho hàng
+function deleteWarehouse(maKho, khuVuc) {
+    if (!confirm(`Bạn có chắc chắn muốn xóa kho hàng ${maKho} này không? Thao tác này sẽ xóa đồng bộ tại phân mảnh.`)) {
+        return;
+    }
+
+    // Gửi kèm tham số khuvuc qua query string để backend định tuyến tới đúng Docker Container
+    fetch(`/api/admin/warehouses/${maKho}?khuvuc=${encodeURIComponent(khuVuc)}`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            // Xóa dòng trực tiếp trên giao diện cho mượt
+            const row = document.getElementById(`row-${maKho}`);
+            if (row) row.remove();
+        } else {
+            alert("Lỗi: " + data.message);
+        }
+    })
+    .catch(err => {
+        console.error("Error:", err);
+        alert("Không thể thực hiện xóa kho, vui lòng kiểm tra kết nối phân mảnh!");
+    });
+}
+</script>
+{% endblock %}
